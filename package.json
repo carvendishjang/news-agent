@@ -1,0 +1,38 @@
+{
+  "name": "news-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LangGraph (TypeScript) agent that builds a featured-news digest for a keyword",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server/index.ts",
+    "start": "node dist/server/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "digest": "tsx src/cli.ts",
+    "studio": "langgraphjs dev",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/rate-limit": "^11.2.2",
+    "@langchain/core": "^1.4.1",
+    "@langchain/langgraph": "^1.7.4",
+    "@langchain/openai": "^1.8.4",
+    "@tavily/core": "^1.1.0",
+    "dotenv": "^18.0.10",
+    "fastify": "^5.12.8",
+    "lru-cache": "^11.5.3",
+    "pino": "^10.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@langchain/langgraph-cli": "^1.7.2",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  }
+}
