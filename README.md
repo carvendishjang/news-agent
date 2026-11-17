@@ -25,14 +25,39 @@ Send `"mode": "agent"` (or `--mode agent`) and the fixed plan → search steps a
 START → seedSearch → agent ⇄ tools ──(finish_research, or out of budget)──→ dedupe → rank → summarize → END
 ```
 
-- **Tools:** `search_news(query, days?)` and `finish_research(reason)`. Search is read-only, and arguments are validated with Zod.
+- **Tools:** `search_news(query, days?)` and `finish_research(focus, reason)`. Search is read-only, and arguments are validated with Zod.
+- **Focus:** for an ambiguous keyword the agent checks its main meanings, then names the one it covers (e.g. "Jaguar, the car brand"). Ranking treats other meanings as off-topic.
 - **Seed search:** code always searches the literal keyword first, so the agent starts with a baseline.
 - **Coverage from code:** each result tells the model how many *new* stories it found, total unique stories and sources, and the budget left, so it can see diminishing returns.
 - **Budgets enforced by code, not the prompt:** max searches, max turns, max tokens, a time limit, and an automatic stop after 2 searches in a row that find fewer than 2 new stories. A forced stop adds a warning to the digest. The model may search a wider time window than the request's only while coverage is below target (2× the article count).
 - **Same guarantees:** full search hits go into state, so URLs still come only from search results. Titles shown to the model are stripped of markup.
-- The response includes `research: { searches, steps, tokens, stopReason }`.
+- The response includes `research: { searches, steps, tokens, stopReason, focus }`.
 
 The agent is slower and costs more than the pipeline (each turn is another LLM call), so the pipeline stays the default.
+
+#### Example run: "Vincent Van Gogh" (2026-11-17)
+
+`npm run digest -- "Vincent Van Gogh" --mode agent` → focus **"Vincent van Gogh, the artist"**, 7-day window, 5 searches, 3 turns, 5,900 tokens, stopped: `finished`.
+
+| # | Story | Source | Kind |
+|---|---|---|---|
+| 1 | Heirs challenge Sotheby's sale of a $180M Van Gogh, citing a prewar sale and restitution principles | nytimes.com | News |
+| 2 | Astronomers re-date *The Starry Night* by matching its sky to real celestial positions | sciencefocus.com | News |
+| 3 | The only confirmed photograph of Van Gogh, taken at 19 | mymodernmet.com | Evergreen |
+| 4 | Gauguin's departure from Arles and the ear incident, retold | biography.com | Evergreen |
+| 5 | *The Potato Eaters* as Van Gogh's first masterpiece | thecollector.com | Evergreen |
+
+**What worked**
+- The agent restated the focus for an unambiguous keyword, kept the requested 7-day window, and stopped on its own well within budget.
+- Summaries are grounded and attributed ("The New York Times reports…"), with no references to "the snippet".
+- It returned 5 stories instead of padding to 8 when relevant news ran out.
+
+**What didn't**
+- 3 of 5 stories are evergreen explainers with recent publish dates, not news. Ranking drops articles for low *relevance* only; there is no minimum *importance*, so relevant-but-unimportant pieces fill the slots on quiet topics.
+- The overview presents a long-known photograph as a recent development.
+- "Why it matters" lines are generic.
+
+**Possible fix:** add a minimum importance score next to the relevance cut-off, and tell the rank prompt that explainers and retellings are low importance. Quiet topics would then return fewer, truly newsworthy stories.
 
 **Safety and reliability**
 - URLs, sources, and dates always come from search results, never from the LLM, so links can't be hallucinated. Unknown article ids returned by the model are ignored.
