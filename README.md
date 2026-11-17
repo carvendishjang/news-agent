@@ -28,7 +28,7 @@ START → seedSearch → agent ⇄ tools ──(finish_research, or out of budge
 - **Tools:** `search_news(query, days?)` and `finish_research(reason)`. Search is read-only, and arguments are validated with Zod.
 - **Seed search:** code always searches the literal keyword first, so the agent starts with a baseline.
 - **Coverage from code:** each result tells the model how many *new* stories it found, total unique stories and sources, and the budget left, so it can see diminishing returns.
-- **Budgets enforced by code, not the prompt:** max searches, max turns, max tokens, a time limit, and an automatic stop after 2 searches in a row that find fewer than 2 new stories. A forced stop adds a warning to the digest.
+- **Budgets enforced by code, not the prompt:** max searches, max turns, max tokens, a time limit, and an automatic stop after 2 searches in a row that find fewer than 2 new stories. A forced stop adds a warning to the digest. The model may search a wider time window than the request's only while coverage is below target (2× the article count).
 - **Same guarantees:** full search hits go into state, so URLs still come only from search results. Titles shown to the model are stripped of markup.
 - The response includes `research: { searches, steps, tokens, stopReason }`.
 

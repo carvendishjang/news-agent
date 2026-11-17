@@ -208,7 +208,46 @@ describe("agent mode", () => {
     expect(d.research).toMatchObject({ searches: 1, steps: 1, stopReason: "model_stopped" });
   });
 
-  it("lets the model widen the window, and dedupe follows it", async () => {
+  it("rejects a wider window when coverage is not thin, without spending a search", async () => {
+    // maxArticles 2 → target 4 stories; the seed search alone returns 5
+    const { run, search, agentLLM } = setup({
+      script: (_m, t) => (t === 0 ? turn(searchCall("older coverage", 21)) : turn(finishCall())),
+    });
+
+    const d = await run({ keyword: "solar power", mode: "agent", maxArticles: 2 });
+
+    expect(search.calls).toHaveLength(1);
+    expect(toolMessages(agentLLM.calls[1]!)[0]!.content).toContain(
+      "coverage is not thin (5 unique stories, target 4), so the window stays at 7 days",
+    );
+    expect(d.timeWindowDays).toBe(7);
+    expect(d.research?.searches).toBe(1);
+  });
+
+  it("always allows searches within the requested window", async () => {
+    const { run, search } = setup({
+      script: (_m, t) => (t === 0 ? turn(searchCall("same window", 7), searchCall("narrower", 3)) : turn(finishCall())),
+    });
+
+    await run({ keyword: "solar power", mode: "agent", maxArticles: 2 });
+
+    expect(search.calls.map((c) => c.opts.days)).toEqual([7, 7, 3]);
+  });
+
+  it("defaults later searches to the requested window, not a widened one", async () => {
+    const search = new FakeSearch((q) => (q === "solar power" ? [hit(1)] : [hit(q.length + 10)]));
+    const { run } = setup({
+      search,
+      script: (_m, t) =>
+        t === 0 ? turn(searchCall("older coverage", 21)) : t === 1 ? turn(searchCall("follow-up")) : turn(finishCall()),
+    });
+
+    await run({ keyword: "solar power", mode: "agent" });
+
+    expect(search.calls.map((c) => c.opts.days)).toEqual([7, 21, 7]);
+  });
+
+  it("lets the model widen the window while coverage is thin, and dedupe follows it", async () => {
     const old: SearchHit = hit(40, { publishedDate: "2026-11-01T08:00:00Z" }); // 15 days before NOW
     const search = new FakeSearch((q) => (q === "solar power" ? [hit(1)] : [old]));
     const { run } = setup({

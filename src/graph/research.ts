@@ -59,7 +59,13 @@ export const FINISH_TOOL = "finish_research";
 
 const SearchArgs = z.object({
   query: z.string().trim().min(2).max(100).describe("News search query, under 12 words"),
-  days: z.number().int().min(1).max(30).optional().describe("Look-back window in days; defaults to the request's window"),
+  days: z
+    .number()
+    .int()
+    .min(1)
+    .max(30)
+    .optional()
+    .describe("Look-back window in days; defaults to the request's window. Wider windows are only allowed while coverage is below target."),
 });
 const FinishArgs = z.object({
   focus: z
@@ -81,6 +87,9 @@ export const RESEARCH_TOOLS: ToolSpec[] = [
 export function resolveBudget(b?: Partial<AgentBudget>): AgentBudget {
   return { ...DEFAULT_AGENT_BUDGET, ...b };
 }
+
+/** Unique stories the agent should aim for: enough for ranking to choose from. */
+export const targetStories = (state: Pick<NewsStateType, "maxArticles">) => state.maxArticles * 2;
 
 function requireAgentLLM(deps: GraphDeps): ToolCallingLLM {
   if (!deps.agentLLM) throw new Error('agent mode needs a tool-calling LLM (GraphDeps.agentLLM)');
@@ -180,7 +189,7 @@ export const seedSearch =
         content: researchPrompt.system({
           maxSearches: budget.maxSearches,
           maxSteps: budget.maxSteps,
-          targetStories: state.maxArticles * 2,
+          targetStories: targetStories(state),
         }),
       },
       { role: "user", content: researchPrompt.user(state.keyword, now.toISOString().slice(0, 10), state.days, seed) },
@@ -189,6 +198,7 @@ export const seedSearch =
       queries: [state.keyword],
       hits: found,
       searchesUsed: 1,
+      requestedDays: state.days,
       researchStartedAt: Date.now(),
       agentMessages: messages,
     };
@@ -253,14 +263,26 @@ export const tools =
         reply(`Error: invalid arguments: ${z.prettifyError(args.error)}`);
         continue;
       }
+      const query = args.data.query;
+      const baseDays = state.requestedDays ?? state.days;
+      const queryDays = args.data.days ?? baseDays;
+      if (queryDays > baseDays) {
+        // Widening is the model's call only while coverage is thin; code enforces it. Not counted as a search.
+        const coverage = dedupeHits(allHits, { days, now }).length;
+        const target = targetStories(state);
+        if (coverage >= target) {
+          reply(
+            `Error: coverage is not thin (${coverage} unique stories, target ${target}), so the window stays at ${baseDays} days. Search without "days", or call ${FINISH_TOOL}.`,
+          );
+          continue;
+        }
+      }
       if (searches >= budget.maxSearches) {
         reply(`Error: search budget used up. Call ${FINISH_TOOL}.`);
         continue;
       }
 
       searches++;
-      const query = args.data.query;
-      const queryDays = args.data.days ?? state.days;
       let found: SearchHit[];
       try {
         found = await deps.search.searchNews(query, {

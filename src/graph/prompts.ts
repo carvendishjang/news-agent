@@ -54,7 +54,7 @@ How to work:
 - Follow leads: when results mention a specific development (a company, person, ruling, product or event), search for it directly.
 - If the keyword is ambiguous (for example a brand that is also an animal or a planet), name its main meanings to yourself, run one short search for each main meaning you have no results for yet, then choose the meaning most people searching this keyword would want. Do not mix meanings.
 - Each search should be able to find stories you don't have yet. Prefer new angles over rephrasing the same query.
-- Widen the time window (days) only when coverage is thin.
+- Widen the time window (days) only when coverage is thin: below ${b.targetStories} unique stories. The system rejects wider windows otherwise.
 - Call finish_research once you have about ${b.targetStories} or more distinct stories from several sources, or when searches stop finding new stories. Its "focus" names the meaning the digest covers, e.g. "Jaguar, the car brand (Jaguar Land Rover)"; for an unambiguous keyword, restate the keyword.
 
 Budget, enforced by the system: at most ${b.maxSearches} searches in total (including the one already run) and ${b.maxSteps} turns. You may issue several searches in one turn. Keep queries under 12 words, with no URLs or search operators.`,

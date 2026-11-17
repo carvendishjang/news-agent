@@ -68,6 +68,8 @@ export const NewsState = new StateSchema({
   searchesUsed: z.number().int().default(0),
   researchSteps: z.number().int().default(0),
   researchTokens: z.number().int().default(0),
+  /** The request's own time window; the agent may widen past it only while coverage is thin. */
+  requestedDays: z.number().int().nullable().default(null),
   /** Epoch ms when research started, for the time budget. */
   researchStartedAt: z.number().nullable().default(null),
   /** Consecutive searches that found too few new stories. */
