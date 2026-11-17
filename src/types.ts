@@ -11,8 +11,12 @@ export const DigestRequestSchema = z.object({
     .trim()
     .regex(/^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})?$/, "invalid language code")
     .default("en"),
+  /** "pipeline": fixed plan → search steps. "agent": the model searches in a loop and decides when coverage is enough. */
+  mode: z.enum(["pipeline", "agent"]).default("pipeline"),
 });
 export type DigestRequest = z.infer<typeof DigestRequestSchema>;
+/** What callers may pass: fields with defaults are optional. */
+export type DigestRequestInput = z.input<typeof DigestRequestSchema>;
 
 /** A raw search hit after normalization. Everything here comes from the search provider, never the LLM. */
 export interface Candidate {
@@ -52,5 +56,14 @@ export const DigestSchema = z.object({
   articles: z.array(FeaturedArticleSchema),
   queries: z.array(z.string()),
   warnings: z.array(z.string()),
+  /** Present in agent mode: how the research loop went. */
+  research: z
+    .object({
+      searches: z.number().int(),
+      steps: z.number().int(),
+      tokens: z.number().int(),
+      stopReason: z.string(),
+    })
+    .optional(),
 });
 export type Digest = z.infer<typeof DigestSchema>;

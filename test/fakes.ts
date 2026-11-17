@@ -1,5 +1,12 @@
 import type { z } from "zod";
-import type { StructuredLLM, StructuredRequest } from "../src/providers/llm.js";
+import type {
+  AgentMessage,
+  AgentTurn,
+  StructuredLLM,
+  StructuredRequest,
+  ToolCallingLLM,
+  ToolSpec,
+} from "../src/providers/llm.js";
 import type { NewsSearchProvider, SearchHit, SearchOptions } from "../src/providers/search.js";
 
 type Handler = (req: StructuredRequest) => unknown;
@@ -44,3 +51,23 @@ export function hit(n: number, extra: Partial<SearchHit> = {}): SearchHit {
 export function idsIn(user: string): string[] {
   return [...user.matchAll(/<article id="(a\d+)">/g)].map((m) => m[1]!);
 }
+
+/** Scripted tool-calling model: `script` sees the conversation so far and returns the next turn. */
+export class FakeAgentLLM implements ToolCallingLLM {
+  calls: AgentMessage[][] = [];
+  constructor(private readonly script: (messages: AgentMessage[], turn: number) => AgentTurn) {}
+
+  async next(messages: AgentMessage[], _tools: ToolSpec[]): Promise<AgentTurn> {
+    this.calls.push(structuredClone(messages));
+    return this.script(messages, this.calls.length - 1);
+  }
+}
+
+let callSeq = 0;
+export const searchCall = (query: string, days?: number) => ({
+  id: `call_${++callSeq}`,
+  name: "search_news",
+  args: days === undefined ? { query } : { query, days },
+});
+export const finishCall = (reason = "enough coverage") => ({ id: `call_${++callSeq}`, name: "finish_research", args: { reason } });
+export const turn = (...toolCalls: AgentTurn["toolCalls"]): AgentTurn => ({ content: "", toolCalls, tokens: 1000 });

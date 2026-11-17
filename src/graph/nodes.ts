@@ -1,10 +1,11 @@
 import { z } from "zod";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import type { StructuredLLM } from "../providers/llm.js";
+import type { StructuredLLM, ToolCallingLLM } from "../providers/llm.js";
 import type { NewsSearchProvider, SearchHit } from "../providers/search.js";
 import type { Digest, RankedCandidate } from "../types.js";
 import { dedupeHits } from "./dedupe.js";
 import { planQueriesPrompt, rankPrompt, summarizePrompt } from "./prompts.js";
+import type { AgentBudget } from "./research.js";
 import type { NewsStateType, NewsStateUpdate } from "./state.js";
 
 export interface GraphDeps {
@@ -17,6 +18,10 @@ export interface GraphDeps {
   /** Minimum relevance (0-10) for an article to be featured. */
   minRelevance?: number;
   now?: () => Date;
+  /** Agent mode only: the model that drives the research loop. */
+  agentLLM?: ToolCallingLLM;
+  /** Agent mode only: overrides for the research budget. */
+  agentBudget?: Partial<AgentBudget>;
 }
 
 const MAX_DAYS = 30;
@@ -79,6 +84,8 @@ export const dedupe =
 export const routeAfterDedupe =
   (deps: GraphDeps) =>
   (state: NewsStateType): "broaden" | "rank" | "finalizeEmpty" => {
+    // In agent mode the model already decided how widely to search; never broaden on its behalf.
+    if (state.mode === "agent") return state.candidates.length === 0 ? "finalizeEmpty" : "rank";
     const canBroaden =
       state.broadenAttempts < (deps.maxBroadenAttempts ?? 1) && state.days < MAX_DAYS;
     if (state.candidates.length < state.maxArticles && canBroaden) return "broaden";
@@ -215,6 +222,16 @@ function buildDigest(
     articles,
     queries: state.queries,
     warnings: state.warnings,
+    ...(state.mode === "agent"
+      ? {
+          research: {
+            searches: state.searchesUsed,
+            steps: state.researchSteps,
+            tokens: state.researchTokens,
+            stopReason: state.researchStopReason ?? "unknown",
+          },
+        }
+      : {}),
   };
 }
 

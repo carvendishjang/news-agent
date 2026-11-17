@@ -11,6 +11,7 @@ import {
   summarize,
   type GraphDeps,
 } from "./nodes.js";
+import { agent, routeAfterAgent, routeAfterTools, routeStart, seedSearch, tools } from "./research.js";
 
 /** Retries transient failures (network, 429, 5xx, bad structured output) on the nodes that call external services. */
 const externalRetry: RetryPolicy = {
@@ -26,9 +27,13 @@ const externalRetry: RetryPolicy = {
 };
 
 /**
+ *  pipeline mode:
  *  START → planQueries → search → dedupe ─┬─(too few)→ broaden → search
  *                                          ├─(none)───→ finalizeEmpty → END
  *                                          └─────────→ rank → summarize → END
+ *
+ *  agent mode:
+ *  START → seedSearch → agent ⇄ tools ──(finished or out of budget)──→ dedupe → (as above, no broaden)
  */
 export function buildNewsGraph(deps: GraphDeps) {
   return new StateGraph({ state: NewsState, input: NewsInput, output: NewsOutput })
@@ -39,7 +44,14 @@ export function buildNewsGraph(deps: GraphDeps) {
     .addNode("rank", rank(deps), { retryPolicy: externalRetry })
     .addNode("summarize", summarize(deps), { retryPolicy: externalRetry })
     .addNode("finalizeEmpty", finalizeEmpty(deps))
-    .addEdge(START, "planQueries")
+    // agent mode: the tools step is not retried as a whole; failed searches go back to the model as errors.
+    .addNode("seedSearch", seedSearch(deps), { retryPolicy: externalRetry })
+    .addNode("agent", agent(deps), { retryPolicy: externalRetry })
+    .addNode("tools", tools(deps))
+    .addConditionalEdges(START, routeStart, ["planQueries", "seedSearch"])
+    .addEdge("seedSearch", "agent")
+    .addConditionalEdges("agent", routeAfterAgent, ["tools", "dedupe"])
+    .addConditionalEdges("tools", routeAfterTools, ["agent", "dedupe"])
     .addEdge("planQueries", "search")
     .addEdge("search", "dedupe")
     .addConditionalEdges("dedupe", routeAfterDedupe(deps), ["broaden", "rank", "finalizeEmpty"])

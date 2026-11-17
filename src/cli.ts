@@ -1,4 +1,4 @@
-// Usage: npm run digest -- "<keyword>" [--days 7] [--max 8] [--lang en] [--json]
+// Usage: npm run digest -- "<keyword>" [--days 7] [--max 8] [--lang en] [--mode pipeline|agent] [--json]
 import "dotenv/config";
 import { parseArgs } from "node:util";
 import { ZodError } from "zod";
@@ -15,6 +15,10 @@ function toMarkdown(d: Digest): string {
     if (a.whyItMatters) lines.push("", `**Why it matters:** ${a.whyItMatters}`);
     lines.push("");
   }
+  if (d.research) {
+    const r = d.research;
+    lines.push("---", `_research: ${r.searches} searches, ${r.steps} turns, ${r.tokens} tokens, stopped: ${r.stopReason}_`);
+  }
   if (d.warnings.length) lines.push("---", ...d.warnings.map((w) => `> note: ${w}`));
   return lines.join("\n");
 }
@@ -26,12 +30,13 @@ async function main() {
       days: { type: "string", default: "7" },
       max: { type: "string", default: "8" },
       lang: { type: "string", default: "en" },
+      mode: { type: "string", default: "pipeline" },
       json: { type: "boolean", default: false },
     },
   });
   const keyword = positionals.join(" ").trim();
   if (!keyword) {
-    console.error('Usage: npm run digest -- "<keyword>" [--days 7] [--max 8] [--lang en] [--json]');
+    console.error('Usage: npm run digest -- "<keyword>" [--days 7] [--max 8] [--lang en] [--mode pipeline|agent] [--json]');
     process.exit(2);
   }
 
@@ -41,6 +46,7 @@ async function main() {
     days: Number(values.days),
     maxArticles: Number(values.max),
     language: values.lang!,
+    mode: values.mode as "pipeline" | "agent",
   });
   console.log(values.json ? JSON.stringify(digest, null, 2) : toMarkdown(digest));
 }
@@ -48,7 +54,7 @@ async function main() {
 main().catch((err) => {
   if (err instanceof ZodError) {
     for (const issue of err.issues) console.error(`Invalid ${issue.path.join(".") || "input"}: ${issue.message}`);
-    console.error('Usage: npm run digest -- "<keyword>" [--days 7] [--max 8] [--lang en] [--json]');
+    console.error('Usage: npm run digest -- "<keyword>" [--days 7] [--max 8] [--lang en] [--mode pipeline|agent] [--json]');
     console.error('Note the space after "--", e.g.  npm run digest -- "solar power" --days 5');
     process.exit(2);
   }

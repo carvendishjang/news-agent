@@ -35,6 +35,12 @@ const ConfigSchema = z
     SEARCH_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
     CACHE_TTL_SECONDS: z.coerce.number().int().nonnegative().default(900),
     CACHE_MAX_ENTRIES: z.coerce.number().int().positive().default(500),
+
+    /** Agent mode budget (requests with "mode": "agent"). Enforced by code, not the prompt. */
+    AGENT_MAX_SEARCHES: z.coerce.number().int().min(1).max(20).default(8),
+    AGENT_MAX_STEPS: z.coerce.number().int().min(1).max(15).default(6),
+    AGENT_MAX_TOKENS: z.coerce.number().int().positive().default(60_000),
+    AGENT_MAX_RESEARCH_MS: z.coerce.number().int().positive().default(45_000),
   })
   .superRefine((cfg, ctx) => {
     if (cfg.NODE_ENV === "production" && cfg.API_KEYS.length === 0) {

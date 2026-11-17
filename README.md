@@ -17,6 +17,23 @@ START → planQueries → search → dedupe ─┬─(too few results)→ broade
 | `rank` | LLM scores relevance and importance and flags same-story duplicates; code filters, sorts, and picks the top N |
 | `summarize` | LLM writes headline, summary, and why-it-matters for each pick plus an overview, in the requested language |
 
+### Agent mode
+
+Send `"mode": "agent"` (or `--mode agent`) and the fixed plan → search steps are replaced by a research loop. The model searches, sees what came back, and decides whether to dig further or stop. Ranking and summarizing are unchanged.
+
+```
+START → seedSearch → agent ⇄ tools ──(finish_research, or out of budget)──→ dedupe → rank → summarize → END
+```
+
+- **Tools:** `search_news(query, days?)` and `finish_research(reason)`. Search is read-only, and arguments are validated with Zod.
+- **Seed search:** code always searches the literal keyword first, so the agent starts with a baseline.
+- **Coverage from code:** each result tells the model how many *new* stories it found, total unique stories and sources, and the budget left, so it can see diminishing returns.
+- **Budgets enforced by code, not the prompt:** max searches, max turns, max tokens, a time limit, and an automatic stop after 2 searches in a row that find fewer than 2 new stories. A forced stop adds a warning to the digest.
+- **Same guarantees:** full search hits go into state, so URLs still come only from search results. Titles shown to the model are stripped of markup.
+- The response includes `research: { searches, steps, tokens, stopReason }`.
+
+The agent is slower and costs more than the pipeline (each turn is another LLM call), so the pipeline stays the default.
+
 **Safety and reliability**
 - URLs, sources, and dates always come from search results, never from the LLM, so links can't be hallucinated. Unknown article ids returned by the model are ignored.
 - Web content goes into prompts as delimited, untrusted data, with instructions to ignore anything that looks like a command.
@@ -30,6 +47,7 @@ npm install
 
 npm run digest -- "solar power" --days 7 --max 5           # markdown to stdout
 npm run digest -- "半導體" --lang zh-TW --json              # JSON, digest written in Traditional Chinese
+npm run digest -- "Jaguar" --mode agent                    # research agent decides what to search
 npm run dev                                                # HTTP API with reload on :8080
 npm run studio                                             # LangGraph Studio (visual graph + traces)
 npm test                                                   # offline tests, no API calls
@@ -40,7 +58,7 @@ npm test                                                   # offline tests, no A
 `POST /v1/digests` (auth: `x-api-key: <key>` or `Authorization: Bearer <key>`)
 
 ```json
-{ "keyword": "solar power", "maxArticles": 8, "days": 7, "language": "en" }
+{ "keyword": "solar power", "maxArticles": 8, "days": 7, "language": "en", "mode": "pipeline" }
 ```
 
 | Field | Type | Default | Limits |
@@ -49,6 +67,7 @@ npm test                                                   # offline tests, no A
 | `maxArticles` | int | 8 | 1–15 |
 | `days` | int | 7 | 1–30 |
 | `language` | string | `en` | language code such as `en`, `ja`, `zh-TW` |
+| `mode` | string | `pipeline` | `pipeline` or `agent` |
 
 Response `200`:
 
@@ -89,6 +108,8 @@ In production (`NODE_ENV=production`) the server refuses to start without `API_K
 
 \*Overlap of the top-8 picks with a `medium` run on the identical candidate pool. `medium` agrees with itself only 6.2/8 times, so `low` is within normal variation. Search adds ~$0.032 per digest (4 Tavily basic searches, pay-as-you-go).
 
+Agent mode budget: `AGENT_MAX_SEARCHES` (default 8, including the seed search), `AGENT_MAX_STEPS` (6 turns), `AGENT_MAX_TOKENS` (60,000) and `AGENT_MAX_RESEARCH_MS` (45,000).
+
 Set `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` to trace every run. Each node and each LLM call (`plan_queries`, `rank_articles`, `summarize_digest`) appears as a span tagged with the keyword.
 
 ## Deploy
@@ -112,12 +133,13 @@ src/
   graph/
     state.ts           LangGraph state (Annotation)
     nodes.ts           node implementations + routing
+    research.ts        agent mode: seed search, agent ⇄ tools loop, budgets
     build.ts           graph topology + retry policy
     dedupe.ts          URL canonicalization, headline similarity
     prompts.ts         all prompts in one place
     studio.ts          export for LangGraph Studio
   providers/
-    llm.ts             StructuredLLM interface + OpenAI implementation
+    llm.ts             StructuredLLM + ToolCallingLLM interfaces, OpenAI implementations
     search.ts          NewsSearchProvider interface + Tavily implementation
   server/
     app.ts             Fastify app (auth, rate limit, timeouts, errors)

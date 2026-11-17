@@ -14,7 +14,7 @@ export class DigestCache {
   }
 
   static key(req: DigestRequest): string {
-    return [req.keyword.trim().toLowerCase(), req.maxArticles, req.days, req.language.toLowerCase()].join("|");
+    return [req.keyword.trim().toLowerCase(), req.maxArticles, req.days, req.language.toLowerCase(), req.mode].join("|");
   }
 
   async getOrCompute(
