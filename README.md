@@ -47,23 +47,6 @@ The agent is slower and costs more than the pipeline (each turn is another LLM c
 | 4 | Gauguin's departure from Arles and the ear incident, retold | biography.com | Evergreen |
 | 5 | *The Potato Eaters* as Van Gogh's first masterpiece | thecollector.com | Evergreen |
 
-**What worked**
-- The agent restated the focus for an unambiguous keyword, kept the requested 7-day window, and stopped on its own well within budget.
-- Summaries are grounded and attributed ("The New York Times reports…"), with no references to "the snippet".
-- It returned 5 stories instead of padding to 8 when relevant news ran out.
-
-**What didn't**
-- 3 of 5 stories are evergreen explainers with recent publish dates, not news. Ranking drops articles for low *relevance* only; there is no minimum *importance*, so relevant-but-unimportant pieces fill the slots on quiet topics.
-- The overview presents a long-known photograph as a recent development.
-- "Why it matters" lines are generic.
-
-**Possible fix:** add a minimum importance score next to the relevance cut-off, and tell the rank prompt that explainers and retellings are low importance. Quiet topics would then return fewer, truly newsworthy stories.
-
-**Safety and reliability**
-- URLs, sources, and dates always come from search results, never from the LLM, so links can't be hallucinated. Unknown article ids returned by the model are ignored.
-- Web content goes into prompts as delimited, untrusted data, with instructions to ignore anything that looks like a command.
-- All LLM output is validated with Zod; nodes that call external services retry with exponential backoff.
-
 ## Quick start
 
 ```bash
