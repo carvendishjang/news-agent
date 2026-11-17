@@ -78,3 +78,31 @@ docker run -p 8080:8080 --env-file .env -e API_KEYS=change-me news-agent
 ```
 
 Multi-stage, non-root image with a health check and graceful shutdown. The service is stateless, so it scales horizontally.
+
+## Project layout
+
+```
+src/
+  cli.ts               terminal entry point
+  agent.ts             wires real providers → graph → runDigest()
+  config.ts            env validation
+  types.ts             request and digest schemas
+  graph/
+    build.ts           graph topology + retry policy
+    state.ts           graph state (Zod schemas)
+    nodes.ts           pipeline steps + routing
+    research.ts        agent mode: seed search, agent ⇄ tools loop, budgets
+    dedupe.ts          URL canonicalization, headline similarity
+    prompts.ts         all prompts in one place
+    studio.ts          export for LangGraph Studio
+  providers/
+    llm.ts             StructuredLLM + ToolCallingLLM interfaces, OpenAI implementations
+    search.ts          NewsSearchProvider interface, Tavily implementation
+  server/
+    app.ts             Fastify app: auth, rate limit, timeouts, errors
+    cache.ts           TTL cache + single-flight
+    index.ts           process entry, graceful shutdown
+test/                  offline tests with a fake LLM and fake search
+```
+
+To swap the model or news source, implement `StructuredLLM`, `ToolCallingLLM` or `NewsSearchProvider` and pass it to `buildNewsGraph()`.
