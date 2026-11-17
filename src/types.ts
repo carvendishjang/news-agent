@@ -63,6 +63,8 @@ export const DigestSchema = z.object({
       steps: z.number().int(),
       tokens: z.number().int(),
       stopReason: z.string(),
+      /** The meaning of the keyword the agent chose to cover; null if it stopped without choosing. */
+      focus: z.string().nullable(),
     })
     .optional(),
 });

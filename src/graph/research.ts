@@ -62,6 +62,12 @@ const SearchArgs = z.object({
   days: z.number().int().min(1).max(30).optional().describe("Look-back window in days; defaults to the request's window"),
 });
 const FinishArgs = z.object({
+  focus: z
+    .string()
+    .trim()
+    .min(2)
+    .max(100)
+    .describe('The meaning of the keyword the digest covers, e.g. "Jaguar, the car brand (Jaguar Land Rover)"'),
   reason: z.string().max(500).describe("Why coverage is good enough"),
 });
 
@@ -221,12 +227,20 @@ export const tools =
     let lowYield = state.lowYieldStreak;
     let days = state.days;
     let finished = false;
+    let focus = state.researchFocus;
 
     for (const call of last.toolCalls) {
       const reply = (content: string) => replies.push({ role: "tool", toolCallId: call.id, content });
 
       if (call.name === FINISH_TOOL) {
+        const fin = FinishArgs.safeParse(call.args);
+        if (!fin.success) {
+          reply(`Error: invalid arguments: ${z.prettifyError(fin.error)}`);
+          continue;
+        }
         finished = true;
+        // The focus reaches later prompts, and the model wrote it after reading untrusted results: keep it plain.
+        focus = clean(fin.data.focus);
         reply("Research finished.");
         continue;
       }
@@ -304,6 +318,7 @@ export const tools =
       searchesUsed: searches,
       lowYieldStreak: lowYield,
       researchStopReason: reason,
+      researchFocus: focus,
       warnings,
     };
   };

@@ -69,5 +69,9 @@ export const searchCall = (query: string, days?: number) => ({
   name: "search_news",
   args: days === undefined ? { query } : { query, days },
 });
-export const finishCall = (reason = "enough coverage") => ({ id: `call_${++callSeq}`, name: "finish_research", args: { reason } });
+export const finishCall = (focus = "solar power", reason = "enough coverage") => ({
+  id: `call_${++callSeq}`,
+  name: "finish_research",
+  args: { focus, reason },
+});
 export const turn = (...toolCalls: AgentTurn["toolCalls"]): AgentTurn => ({ content: "", toolCalls, tokens: 1000 });

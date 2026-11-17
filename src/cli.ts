@@ -8,7 +8,9 @@ import { buildNewsGraph } from "./graph/build.js";
 import type { Digest } from "./types.js";
 
 function toMarkdown(d: Digest): string {
-  const lines = [`# Featured news: ${d.keyword}`, `_last ${d.timeWindowDays} day(s) · ${d.generatedAt}_`, "", d.overview, ""];
+  const lines = [`# Featured news: ${d.keyword}`, `_last ${d.timeWindowDays} day(s) · ${d.generatedAt}_`];
+  if (d.research?.focus) lines.push(`**Focus:** ${d.research.focus}`);
+  lines.push("", d.overview, "");
   for (const a of d.articles) {
     const date = a.publishedAt ? a.publishedAt.slice(0, 10) : "date unknown";
     lines.push(`## ${a.rank}. ${a.headline}`, `${a.source} · ${date} · ${a.url}`, "", a.summary);

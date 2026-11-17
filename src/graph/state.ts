@@ -74,6 +74,8 @@ export const NewsState = new StateSchema({
   lowYieldStreak: z.number().int().default(0),
   /** Why research ended; null while it is still running. */
   researchStopReason: z.string().nullable().default(null),
+  /** The meaning of the keyword the agent chose to cover (set by finish_research). */
+  researchFocus: z.string().nullable().default(null),
 
   // ---- output ----
   digest: DigestSchema.nullable().default(null),

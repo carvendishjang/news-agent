@@ -122,7 +122,7 @@ export const rank =
     const out = await deps.llm.generate(RankSchema, {
       name: "rank_articles",
       system: rankPrompt.system,
-      user: rankPrompt.user(state.keyword, pool),
+      user: rankPrompt.user(state.keyword, pool, state.researchFocus),
       signal: config.signal,
     });
 
@@ -169,7 +169,7 @@ export const summarize =
     const out = await deps.llm.generate(SummarySchema, {
       name: "summarize_digest",
       system: summarizePrompt.system,
-      user: summarizePrompt.user(state.keyword, state.language, state.selected),
+      user: summarizePrompt.user(state.keyword, state.language, state.selected, state.researchFocus),
       signal: config.signal,
     });
 
@@ -229,6 +229,7 @@ function buildDigest(
             steps: state.researchSteps,
             tokens: state.researchTokens,
             stopReason: state.researchStopReason ?? "unknown",
+            focus: state.researchFocus,
           },
         }
       : {}),
