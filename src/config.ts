@@ -15,6 +15,8 @@ const ConfigSchema = z
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     OPENAI_API_KEY: z.string().min(1, "OPENAI_API_KEY is required"),
     OPENAI_MODEL: z.string().default("gpt-5-mini"),
+    /** Reasoning effort for reasoning models (ignored by others). Lower = faster and cheaper. */
+    OPENAI_REASONING_EFFORT: z.enum(["minimal", "low", "medium", "high"]).default("low"),
     TAVILY_API_KEY: z.string().min(1, "TAVILY_API_KEY is required"),
 
     HOST: z.string().default("0.0.0.0"),

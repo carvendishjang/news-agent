@@ -79,6 +79,16 @@ Probes: `GET /healthz` (liveness) and `GET /readyz` (returns 503 while shutting 
 All settings come from environment variables and are validated at startup (`src/config.ts`); see `.env.example`.
 In production (`NODE_ENV=production`) the server refuses to start without `API_KEYS`.
 
+`OPENAI_REASONING_EFFORT` (default `low`) controls how much hidden reasoning the model does. Measured on 6 keywords with `gpt-5-mini`:
+
+| Effort | Median latency | LLM cost / digest | Ranking agreement with `medium`* |
+|---|---|---|---|
+| `medium` | ~88s | ~$0.015 | 6.2 / 8 (run-to-run) |
+| `low` (default) | ~43s | ~$0.008 | 5.8 / 8 |
+| `minimal` | ~30s | ~$0.006 | 5.2 / 8 |
+
+\*Overlap of the top-8 picks with a `medium` run on the identical candidate pool. `medium` agrees with itself only 6.2/8 times, so `low` is within normal variation. Search adds ~$0.032 per digest (4 Tavily basic searches, pay-as-you-go).
+
 Set `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` to trace every run. Each node and each LLM call (`plan_queries`, `rank_articles`, `summarize_digest`) appears as a span tagged with the keyword.
 
 ## Deploy

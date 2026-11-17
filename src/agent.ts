@@ -11,6 +11,7 @@ export function createDefaultDeps(cfg: Config): GraphDeps {
       apiKey: cfg.OPENAI_API_KEY,
       model: cfg.OPENAI_MODEL,
       timeoutMs: cfg.LLM_TIMEOUT_MS,
+      reasoningEffort: cfg.OPENAI_REASONING_EFFORT,
     }),
     search: new TavilyNewsSearch(cfg.TAVILY_API_KEY, cfg.SEARCH_TIMEOUT_MS),
   };

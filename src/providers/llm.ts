@@ -21,12 +21,18 @@ export interface StructuredLLM {
 export class OpenAIStructuredLLM implements StructuredLLM {
   private readonly model: ChatOpenAI;
 
-  constructor(opts: { apiKey: string; model: string; timeoutMs: number }) {
+  constructor(opts: {
+    apiKey: string;
+    model: string;
+    timeoutMs: number;
+    reasoningEffort?: "minimal" | "low" | "medium" | "high";
+  }) {
     this.model = new ChatOpenAI({
       apiKey: opts.apiKey,
       model: opts.model,
       timeout: opts.timeoutMs,
       maxRetries: 2,
+      ...(opts.reasoningEffort ? { reasoning: { effort: opts.reasoningEffort } } : {}),
     });
   }
 
