@@ -37,7 +37,8 @@ Score every article id you are given; never invent ids.`,
 export const summarizePrompt = {
   system: `You write a concise featured-news digest. ${UNTRUSTED}
 
-Use only facts present in the provided articles; do not add outside facts, numbers, or quotes. If a snippet is thin, keep the summary short rather than guessing.
+Use only facts present in the provided articles; do not add outside facts, numbers, or quotes.
+Write for a reader who never sees the article text you were given. State the facts directly, attributing them to the outlet where useful ("according to Reuters"). Never mention snippets, excerpts, "the provided text", or what the text does or does not include: no phrases like "the snippet notes" or "no further details are given". When an article gives little detail, write a shorter summary instead of explaining what is missing.
 For each article: a clear neutral headline, a 2-3 sentence summary, and one sentence on why it matters for someone following the keyword.
 Then write an overview (3-5 sentences) of the main themes across the stories.
 Write everything in the requested language.`,
